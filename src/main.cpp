@@ -1,3 +1,4 @@
+#if 0
 /*
  * Embedded Programming 2 — Session 1: your first flash
  * --------------------------------------------------------------------------
@@ -19,10 +20,17 @@
  * square wave, always running, that you can find on the scope in seconds.
  * It is deliberately NOT the LED pin — see the note above ledcSetup().
  */
+
+
 #include <Arduino.h>
 
-#define RGB_LED_PIN 38   // silkscreen: RGB@IO38
+#ifndef RGB_LED_PIN
+#define RGB_LED_PIN 38   // silkscreen: RGB@IO38; override with -DRGB_LED_PIN=48 on other ESP32-S3 boards
+#endif
+
+#ifndef SCOPE_PIN
 #define SCOPE_PIN    2   // J3 pin 5, four pins down from GND — probe this one
+#endif
 
 void setup() {
   Serial.begin(115200);
@@ -58,3 +66,26 @@ void loop() {
   Serial.println("blink: off");
   delay(500);
 }
+
+#endif
+
+#include <Arduino.h>
+
+#define LED_PIN 40
+
+void setup() {
+  Serial.begin(115200);
+  delay(300);
+  pinMode(LED_PIN, OUTPUT);
+  Serial.println();
+  Serial.println("Plain LED blinking on GPIO40.");
+}
+
+void loop() {
+  digitalWrite(LED_PIN, HIGH);   // on
+  delay(500);                    // <-- wait half a second
+
+  digitalWrite(LED_PIN, LOW);    // off
+  delay(500);                    // <-- and again
+}
+
