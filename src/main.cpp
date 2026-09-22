@@ -10,7 +10,7 @@
 #include <Arduino.h>
 #include <Wire.h>
 
-constexpr uint8_t REQUEST_ADDRESS = 0x68;
+constexpr uint8_t REQUEST_ADDRESS = 0x69;
 
 void setup() {
   Serial.begin(115200);
