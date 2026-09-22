@@ -1,45 +1,29 @@
-/*
- * Session 2 — the analog way: read a potentiometer.
- * --------------------------------------------------------------------------
- * Copy this into src/main.cpp, then build + upload.
- *
- * WIRING (three wires, power off while you wire):
- *   pot outer leg 1 -> 3V3
- *   pot outer leg 2 -> GND
- *   pot middle leg  -> GPIO4          <- the wiper: this is the one you read
- *
- * Turn the knob and watch the number sweep. That is the whole exercise: a
- * continuously variable voltage becoming a number your program can use.
- *
- * WHAT THE NUMBER MEANS
- *   analogRead() gives a raw count from a 12-bit converter: 0..4095.
- *   0 = the wiper is at GND, 4095 = the wiper is near 3V3.
- *
- *   Deliberately NOT printing volts here. "raw * 3.3 / 4095" is the idealised
- *   conversion you will see all over the internet, but the ESP32's converter
- *   is not perfectly linear and the real transfer function depends on the
- *   attenuation setting. If you actually need volts, ask the core for a
- *   calibrated reading instead:  analogReadMilliVolts(POT_PIN)
- *   For dimming an LED next, the raw count is all you need.
- *
- * WHY GPIO4: it is an ADC1 pin, it is free on this board, and it is not one of
- * the strapping pins (avoid GPIO0/3/45/46) or the octal flash/PSRAM pins
- * (GPIO33-37). GPIO8 and GPIO9 are the I2C bus. GPIO2 carries the scope test
- * signal from session 1.
- */
+// EP2 S2: one repeated address request for an unambiguous scope capture.
+// Copy into src/main.cpp; preserve your working platformio.ini.
+// Wire: 3V3, GND, SDA GPIO8, SCL GPIO9. Keep AD0 low (default).
+// First use the full scanner to confirm only 0x68 is present.
+// Change REQUEST_ADDRESS: 0x68 -> 0x69 -> 0x68; reflash each time.
+// Expected: ACK -> address NACK -> ACK, with all wires intact.
+// Other nonzero Wire statuses are errors, not automatically an address NACK.
+// Scope: A=SDA, B=SCL, grounds=GND; I2C seven-bit address decode.
+// Restore examples/session02_mpu_read.cpp before recording motion.
 #include <Arduino.h>
+#include <Wire.h>
 
-#define POT_PIN 4
+constexpr uint8_t REQUEST_ADDRESS = 0x68;
 
 void setup() {
   Serial.begin(115200);
   delay(300);
-  Serial.println();
-  Serial.println("Potentiometer — turn the knob.");
+  Wire.begin(8, 9);
+  Wire.setClock(100000);  // 100 kHz SCL, not 100000 sensor readings/s
 }
 
 void loop() {
-  int raw = analogRead(POT_PIN);          // 0 .. 4095
-  Serial.println(raw);
-  delay(100);                             // 10 readings a second is plenty to watch
+  Wire.beginTransmission(REQUEST_ADDRESS);
+  uint8_t status = Wire.endTransmission();
+  Serial.printf("Address 0x%02X: Wire status %u\n", REQUEST_ADDRESS, status);
+  // Status 0: acknowledged; status 2: address not acknowledged.
+  // Inspect any other status instead of calling every failure a NACK.
+  delay(1000);           // One short request, then an idle gap for the scope.
 }
