@@ -1,27 +1,20 @@
-/*
- * Homework — Tilt switches, knob dims
- *
- * My chosen axis and threshold: inverted Y axis, threshold = +6.0 m/s^2.
- * My readings: UP ≈ +9.55, SIDEWAYS ≈ +3.96, DOWN ≈ +1.71 m/s^2.
- * Testing surprise: The LED switches off when the board is tilted away from UP.
- */
 
 #include <Arduino.h>
 #include <Adafruit_MPU6050.h>
 #include <Wire.h>
-
-#define POT_PIN 4
-#define LED_PIN 40
+#include <Session_3_Project_inferencing.h>
 
 Adafruit_MPU6050 mpu;
 
+float buffer[EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE];
+size_t bufferIndex = 0;
+
+const float CONFIDENCE_THRESHOLD = 0.60f;
+
 void setup() {
   Serial.begin(115200);
-  delay(300);
+  delay(1000);
 
-  pinMode(LED_PIN, OUTPUT);
-
-  // MPU-6050: SDA = GPIO8, SCL = GPIO9
   Wire.begin(8, 9);
 
   if (!mpu.begin()) {
@@ -33,43 +26,67 @@ void setup() {
 
   mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
 
-  Serial.println("Tilt + knob LED ready");
+  Serial.println("Session 4: TinyML model deployment");
+  Serial.println("Classes: idle, shake, wave");
+  Serial.println("Collecting sensor data...");
 }
 
 void loop() {
-  // Read MPU-6050
   sensors_event_t a, g, t;
   mpu.getEvent(&a, &g, &t);
 
-  // Read potentiometer
-  int raw = analogRead(POT_PIN);
-
-  // Convert 0-4095 to 0-255
-  int duty = raw / 16;
-
-  if (duty > 255) {
-    duty = 255;
+  if (bufferIndex + 3 <= EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE) {
+    buffer[bufferIndex++] = a.acceleration.x;
+    buffer[bufferIndex++] = a.acceleration.y;
+    buffer[bufferIndex++] = a.acceleration.z;
   }
 
-  // Invert Y so UP is the positive direction
-  float upAxis = -a.acceleration.y;
+  if (bufferIndex >= EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE) {
+    signal_t signal;
+    numpy::signal_from_buffer(
+      buffer,
+      EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE,
+      &signal
+    );
 
-  // LED works only when the board is pointing UP
-  if (upAxis > 6.0) {
-    analogWrite(LED_PIN, duty);
-  } else {
-    analogWrite(LED_PIN, 0);
+    ei_impulse_result_t result = {0};
+
+    unsigned long startTime = micros();
+    EI_IMPULSE_ERROR status = run_classifier(&signal, &result, false);
+    unsigned long inferenceTime = micros() - startTime;
+
+    Serial.printf("Inference time: %.3f ms\n",
+                  inferenceTime / 1000.0f);
+
+    if (status == EI_IMPULSE_OK) {
+      size_t bestIndex = 0;
+      float bestConfidence = 0.0f;
+
+      for (size_t i = 0; i < EI_CLASSIFIER_LABEL_COUNT; i++) {
+        Serial.printf("%s: %.3f\n",
+                      result.classification[i].label,
+                      result.classification[i].value);
+
+        if (result.classification[i].value > bestConfidence) {
+          bestConfidence = result.classification[i].value;
+          bestIndex = i;
+        }
+      }
+
+      if (bestConfidence >= CONFIDENCE_THRESHOLD) {
+        Serial.printf("Prediction: %s (%.1f%%)\n",
+                      result.classification[bestIndex].label,
+                      bestConfidence * 100.0f);
+      } else {
+        Serial.println("Prediction uncertain — below threshold");
+      }
+    } else {
+      Serial.printf("Classifier error: %d\n", status);
+    }
+
+    Serial.println("--------------------");
+    bufferIndex = 0;
   }
 
-  // Print readings
-  Serial.printf(
-    "X %.2f  Y %.2f  upAxis %.2f  raw %d  duty %d\n",
-    a.acceleration.x,
-    a.acceleration.y,
-    upAxis,
-    raw,
-    duty
-  );
-
-  delay(50);
+  delay(20);
 }
