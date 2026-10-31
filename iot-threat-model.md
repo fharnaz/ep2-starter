@@ -1,6 +1,20 @@
-\# IoT Threat Model
+﻿# IoT Threat Model
 
 
 
-\*\*Asset:\*\* My home Wi-Fi router protects my internet connection and helps keep my connected devices and personal information safe. \*\*Threat:\*\* A nearby unauthorized person could try to access the Wi-Fi network, or a remote attacker could exploit outdated router firmware. I do not know whether my router has any vulnerabilities. \*\*Response:\*\* I would use a strong, unique Wi-Fi password, change the default administrator password, install firmware updates, and disable WPS if it is not needed. These measures reduce common risks without requiring expensive equipment or intrusive security testing.
+**Device:** Home Wi-Fi router
+
+
+
+**Asset:** The main assets are the router's administrator login, firmware, configuration settings, and the network traffic passing through it. The router is important because all connected devices depend on it. If someone compromises it, they could redirect traffic, change DNS settings, weaken firewall protection, or use it as part of a botnet.
+
+
+
+**Threat:** The most realistic threat is automated scanners and botnets searching the internet for routers with default passwords, outdated firmware, or exposed administrator pages. Attackers can use compromised routers for activities such as DDoS attacks or traffic redirection. I do not know whether my router has these weaknesses or how often it is targeted, so this is a potential risk rather than a confirmed vulnerability.
+
+
+
+**Response:** I would change the default administrator password, enable automatic firmware updates, prevent administrator access from the internet, and disable UPnP if it is not needed. I would also consider using a guest network for smart-home devices. These measures are practical and reduce common security risks without requiring expensive or complicated security systems.
+
+
 
